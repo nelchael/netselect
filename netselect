@@ -17,7 +17,7 @@
 # config_... in net.profile (only one interface configured).
 #
 
-VERSION=1.2.0
+VERSION=1.2.2
 
 source /sbin/functions.sh
 
@@ -330,7 +330,7 @@ function doGUI() {
 			kdialog \
 				--miniicon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
 				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
-				--geometry 200x300 \
+				--geometry 200x400 \
 				--title 'netselect' \
 				--radiolist 'Select profile:' \
 				auto "Auto select" on ${options} 2> /dev/null
