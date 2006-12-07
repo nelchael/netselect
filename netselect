@@ -1,0 +1,453 @@
+#!/bin/bash
+
+# Best place for documentation ;)
+#
+# This script uses:
+#   - /etc/conf.d/net.profile.<profile name>
+#   - /etc/wpa_supplicant/wpa_supplicant.conf.profile.<profile name>
+#   - /etc/resolv.conf.profile.<profile name>
+#
+# If you use DHCP on some profile you can ommit creating resolv.conf.profile for
+# that profile. The same applies to wpa_supplicant.conf.profile.
+#
+# Each of this files is what you would normally put in it, so in net.profile you
+# should put network configuration for that profile, and so on.
+#
+# If you want to allow netselect to auto-start interface you must have only one
+# config_... in net.profile (only one interface configured).
+#
+
+VERSION=1.2.0
+
+source /sbin/functions.sh
+
+DO_AUTOSTART=yes
+SILENT=no
+self=$0
+
+has() {
+	[[ " ${*:2} " == *" $1 "* ]]
+}
+
+function seinfo() {
+	if [[ "${SILENT}" == "yes" ]]; then
+		echo ${@} | sed -e 's,\\e\[[0-9;]\+m,,g'
+	else
+		einfo ${@}
+	fi
+}
+
+function seinfon() {
+	if [[ "${SILENT}" == "yes" ]]; then
+		echo -n ${@}
+	else
+		einfon ${@}
+	fi
+}
+
+function scanForWiFiNetworks() {
+
+	[[ -f /etc/netselect.conf ]] || {
+		eerror "File /etc/netselect.conf does not exist."
+		exit 1
+	}
+
+	source /etc/netselect.conf
+
+	[[ -z "${interface}" ]] && {
+		eerror "Empty interface?"
+		exit 1
+	}
+
+	if [[ -n "${assert_module}" ]]; then
+
+		if [[ -z "$(lsmod 2>&1 | grep ${assert_module})" ]]; then
+
+			modprobe ${assert_module} || {
+				eerror "Failed to load module ${assert_module}"
+				exit 1
+			}
+
+		fi
+
+	fi
+
+	[[ "${SILENT}" == "no" ]] && einfo "Available WiFi networks:"
+
+	eindent
+	local printedNetworks
+	for i in ${networks}; do
+		varname="network_${i}[@]"
+		bssids=${!varname}
+		[[ -z "${bssids}" ]] && {
+			ewarn "Empty BSSID for ${i}"
+			continue
+		}
+		for bssid in ${bssids}; do
+			if [[ -n "$(iwlist ${interface} scan 2>&1 | grep ${bssid})" ]]; then
+				[[ "${SILENT}" == "yes" ]] && {
+					has ${i} ${printedNetworks} && continue
+				}
+				printedNetworks="${printedNetworks} ${i}"
+				if [[ "${SILENT}" == "yes" ]]; then
+					echo "${i}"
+				else
+					einfo "${i} (BSSID: ${bssid})"
+				fi
+			fi
+		done
+	done
+	eoutdent
+
+}
+
+function autoSwitch() {
+
+	aNetwork=$(netselect --silent --scan)
+	[[ -z "${aNetwork}" ]] && {
+		eerror "No networks available."
+		return 1
+	}
+
+	netselect --set ${aNetwork} || return 1
+
+	return 0
+
+}
+
+function listProfiles() {
+
+	[[ "${SILENT}" == "no" ]] && seinfo "Available profiles:"
+	current="$(readlink -f /etc/conf.d/net | sed -e 's,/etc/conf.d/net.profile.,,')"
+	eindent
+	for i in /etc/conf.d/net.profile.*; do
+		profile="$(echo ${i} | sed -e 's,/etc/conf.d/net.profile.,,')"
+		if [[ "${profile}" = "${current}" ]]; then
+			seinfo "\e[01;32m${profile}\e[0;0m"
+		else
+			seinfo "${profile}"
+		fi
+	done
+	eoutdent
+
+}
+
+function showActive() {
+
+	[[ "${SILENT}" == "no" ]] && seinfo "Active profile:"
+	eindent
+	seinfo "$(getCurrentProfile)"
+	eoutdent
+
+}
+
+function checkSetup() {
+
+	einfo "Checking setup ..."
+	eindent
+
+	[[ -L /etc/conf.d/net ]] || {
+		eerror "/etc/conf.d/net is not a symlink!"
+		all_ok=no
+	}
+
+	[[ -L /etc/wpa_supplicant/wpa_supplicant.conf ]] || {
+		eerror "/etc/wpa_supplicant/wpa_supplicant.conf is not a symlink!"
+		all_ok=no
+	}
+
+	[[ -f "/etc/conf.d/net.profile.${1}" ]] || {
+		eerror "No such profile \"${1}\" (file \"/etc/conf.d/net.profile.${1}\" doesn't exist)!"
+		all_ok=no
+	}
+
+	if [[ ${all_ok} = "no" ]]; then
+		einfo "First time use: symlink it to /dev/null"
+		return 1
+	fi
+
+	eoutdent
+
+	return 0
+
+}
+
+function showHelp() {
+
+	echo -e "\nnetselect: manage multiple network configurations - \e[01;32mGentoo\e[0;0m style"
+	echo "Version: ${VERSION}"
+	cat <<EOF
+
+Usage:
+
+    netselect --help          - show this help
+    netselect --list          - list available profile
+    netselect --set <profile> - use selected profile
+    netselect --reselect      - reselect profile (shutdown all, start selected,
+                                fix symlinks, make coffee)
+    netselect --state         - show state of each interface
+    netselect --active        - show active profile
+    netselect --gui           - use GUI version (required kdialog from KDE)
+    netselect --scan          - scan for available networks
+                                (requires /etc/netselect.conf)
+    netselect --auto          - try to auto switch to available network
+
+In all above actions \`--' can be dropped (for example: --set -> set).
+
+Generic options (must be specified before any actions mentioned above):
+
+    --script                  - no fancy output
+    --silent                  - no fancy output
+                                (respected by --list, --active, --scan)
+    --no-autostart            - don't auto start default interface
+
+Have fun :)
+
+Krzysiek 'Nelchael' Pawlik - nelchael@gentoo.org
+
+EOF
+
+}
+
+function getCurrentProfile() {
+
+	echo "$(readlink -f /etc/conf.d/net | sed -e 's,/etc/conf.d/net.profile.,,')"
+
+}
+
+function selectProfile() {
+
+	einfon "Stopping interfaces: "
+	for i in /etc/init.d/net.{eth,wlan,ath}*; do
+		[[ -f "${i}" ]] || continue
+		interface=${i/*net./}
+		echo -n "${interface} "
+		${i} stop &> /dev/null
+	done
+	echo
+
+	ebegin "Switching to ${1}"
+	eindent
+
+	ebegin "net symlink"
+	rm -f /etc/conf.d/net
+	ln -s "/etc/conf.d/net.profile.${1}" /etc/conf.d/net
+	eend 0
+
+	[[ -f "/etc/wpa_supplicant/wpa_supplicant.conf.profile.${1}" ]] && {
+		ebegin "wpa_supplicant.conf symlink"
+		rm -f /etc/wpa_supplicant/wpa_supplicant.conf
+		ln -s "/etc/wpa_supplicant/wpa_supplicant.conf.profile.${1}" /etc/wpa_supplicant/wpa_supplicant.conf
+		eend 0
+	}
+
+	[[ -f "/etc/resolv.conf.profile.${1}" ]] && {
+		ebegin "resolv.conf"
+		cat "/etc/resolv.conf.profile.${1}" > /etc/resolv.conf
+		eend 0
+	}
+
+	eoutdent
+
+	configs="$(cat /etc/conf.d/net | egrep ^config_ | sed -e 's/^config_\(.*\)=.*$/\1/')"
+	counter=$(echo "${configs}" | wc -w)
+
+	rm -f /etc/runlevels/default/net.* &> /dev/null
+	ebegin "Adjusting runlevels/default symlinks"
+	eindent
+
+	pushd /etc/runlevels/default &> /dev/null
+	for i in ${configs}; do
+		ebegin ${i}
+		ln -s /etc/init.d/net.${i}
+		eend $?
+	done
+	popd &> /dev/null
+
+	eoutdent
+
+	autostartInterface || return 1
+
+	return 0
+
+}
+
+function autostartInterface() {
+
+	[[ "${DO_AUTOSTART}" = "no" ]] && exit 0
+
+	configs="$(cat /etc/conf.d/net | egrep ^config_ | sed -e 's/^config_\(.*\)=.*$/\1/')"
+	counter=$(echo "${configs}" | wc -w)
+
+	if [[ ${counter} -lt 2 ]]; then
+		einfo "Only one interface (${configs}) configured, auto-starting:"
+		sleep 1s
+		/etc/init.d/net.${configs} start
+	else
+		einfo "Interfaces:"
+		eindent
+		counter=0
+		for i in ${configs}; do
+			einfo "${i}"
+			counter=$((counter + 1))
+		done
+		eoutdent
+	fi
+
+	return 0
+
+}
+
+function showState() {
+
+	for i in /etc/init.d/net.*; do
+		einfo "Status for ${i/\/etc\/init.d\/net./}:\t$(${i} status | sed -e 's/ \+/ /g' | cut -d ' ' -f 4)"
+	done
+
+}
+
+function checkSilent() {
+
+	[[ "${SILENT}" == "yes" ]] && {
+		ewarn
+		ewarn "--silent is not supported by current action"
+		ewarn
+	}
+
+}
+
+function doGUI() {
+
+	(
+
+		local options=
+		for i in $(netselect --silent --list); do
+			options="${options} ${i} ${i} off "
+		done
+
+		kbuildsycoca --nocheckfiles &> /dev/null
+		local resp=$(
+			kdialog \
+				--miniicon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--geometry 200x300 \
+				--title 'netselect' \
+				--radiolist 'Select profile:' \
+				auto "Auto select" on ${options} 2> /dev/null
+		)
+
+		[[ -z "${resp}" ]] && exit 0
+
+		if [[ "${resp}" == "auto" ]]; then
+
+			kdialog \
+				--miniicon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--msgbox "Please wait, scanning for known networks ..." &> /dev/null &
+			pid=$!
+
+			network=$(netselect --silent --scan)
+			[[ -z "${network}" ]] && {
+				kill ${pid} &> /dev/null
+				kdialog --error "No network could be found."
+				exit 1
+			}
+
+			resp=${network}
+			kill ${pid} &> /dev/null
+
+		fi
+
+		kdialog \
+			--miniicon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+			--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+			--msgbox "Please wait, switching to ${resp} ..." &> /dev/null &
+		pid=$!
+
+		checkSetup ${resp} &> /dev/null || {
+			kill ${pid} &> /dev/null
+			kdialog --error "Configuration error."
+			exit 1
+		}
+		selectProfile ${resp} &> /dev/null || {
+			kill ${pid} &> /dev/null
+			kdialog --error "Can't set profile."
+			exit 1
+		}
+
+		while [[ -z "$(ifconfig | grep ^eth -A 1 | tail -n 1 | grep -E 'addr:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')" ]]; do
+			sleep 0.1s
+		done
+
+		kill ${pid} &> /dev/null
+
+	) &> /dev/null
+
+}
+
+while /bin/true; do
+	case ${1} in
+		--silent|--script)
+			shift
+			SILENT=yes
+			continue
+		;;
+		--no-autostart)
+			shift
+			DO_AUTOSTART=no
+			continue
+		;;
+		*)
+			break
+		;;
+	esac
+done
+
+case ${1} in
+	--list|list)
+		listProfiles
+	;;
+	--set|set)
+		checkSilent
+		shift
+		if [[ -z "${1}" ]]; then
+			eerror "No profile specified"
+			listProfiles
+		else
+			checkSetup ${1} || exit 1
+			selectProfile ${1}
+		fi
+	;;
+	--reselect|reselect)
+		checkSilent
+		einfo "Reselecting current profile ..."
+		checkSetup $(getCurrentProfile) || exit 1
+		selectProfile $(getCurrentProfile)
+	;;
+	--help|help)
+		checkSilent
+		showHelp
+	;;
+	--state|state)
+		checkSilent
+		showState
+	;;
+	--active|active)
+		showActive
+	;;
+	--gui|gui)
+		checkSilent
+		doGUI
+	;;
+	--scan|scan)
+		scanForWiFiNetworks
+	;;
+	--auto|auto)
+		checkSilent
+		autoSwitch
+	;;
+	*)
+		[[ -n "${1}" ]] && eerror "Unknown action: \"${1}\""
+		showHelp
+	;;
+esac
