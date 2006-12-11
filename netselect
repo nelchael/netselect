@@ -17,7 +17,7 @@
 # config_... in net.profile (only one interface configured).
 #
 
-VERSION=1.2.2
+VERSION=1.2.3
 
 source /sbin/functions.sh
 
@@ -25,8 +25,21 @@ DO_AUTOSTART=yes
 SILENT=no
 self=$0
 
-has() {
+function has() {
 	[[ " ${*:2} " == *" $1 "* ]]
+}
+
+function getConfigParam() {
+
+	[[ -z "${1}" ]] && {
+		eerror "Missing first parameter for getConfigParam()"
+		exit 1
+	}
+
+	source /etc/netselect.conf
+
+	[[ -n "${!1}" ]] && echo "${!1}"
+
 }
 
 function seinfo() {
@@ -225,6 +238,12 @@ function selectProfile() {
 		${i} stop &> /dev/null
 	done
 	echo
+
+	if [[ "$(getConfigParam killPump)" == "yes" ]]; then
+		einfo "Killing pump"
+		killall pump &> /dev/null
+		eend 0
+	fi
 
 	ebegin "Switching to ${1}"
 	eindent
