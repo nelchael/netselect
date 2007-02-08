@@ -191,6 +191,8 @@ function showHelp() {
 	echo "Version: ${VERSION}"
 	cat <<EOF
 
+Running as $(whoami)
+
 Usage:
 
     netselect --help          - show this help
@@ -240,9 +242,18 @@ function selectProfile() {
 	echo
 
 	if [[ "$(getConfigParam killPump)" == "yes" ]]; then
-		einfo "Killing pump"
+		ebegin "Killing pump"
 		killall pump &> /dev/null
 		eend 0
+	fi
+
+	if [[ "$(getConfigParam reloadModule)" == "yes" ]]; then
+		ebegin "Unloading $(getConfigParam assert_module)"
+		rmmod "$(getConfigParam assert_module)"
+		eend $?
+		ebegin "Loading $(getConfigParam assert_module)"
+		modprobe "$(getConfigParam assert_module)"
+		eend $?
 	fi
 
 	ebegin "Switching to ${1}"
