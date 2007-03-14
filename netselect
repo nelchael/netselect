@@ -36,7 +36,7 @@ function getConfigParam() {
 		exit 1
 	}
 
-	source /etc/netselect.conf
+	source /etc/netselect/netselect.conf
 
 	[[ -n "${!1}" ]] && echo "${!1}"
 
@@ -60,12 +60,12 @@ function seinfon() {
 
 function scanForWiFiNetworks() {
 
-	[[ -f /etc/netselect.conf ]] || {
-		eerror "File /etc/netselect.conf does not exist."
+	[[ -f /etc/netselect/netselect.conf ]] || {
+		eerror "File /etc/netselect/netselect.conf does not exist."
 		exit 1
 	}
 
-	source /etc/netselect.conf
+	source /etc/netselect/netselect.conf
 
 	[[ -z "${interface}" ]] && {
 		eerror "Empty interface?"
@@ -204,7 +204,7 @@ Usage:
     netselect --active        - show active profile
     netselect --gui           - use GUI version (required kdialog from KDE)
     netselect --scan          - scan for available networks
-                                (requires /etc/netselect.conf)
+                                (requires /etc/netselect/netselect.conf)
     netselect --auto          - try to auto switch to available network
 
 In all above actions \`--' can be dropped (for example: --set -> set).
@@ -297,6 +297,18 @@ function selectProfile() {
 	eoutdent
 
 	autostartInterface || return 1
+
+	if [[ -d /etc/netselect/postset.d ]]; then
+		einfo "Running postset scripts:"
+		for script in /etc/netselect/postset.d/*; do
+			if [[ -x "${script}" ]]; then
+				eindent
+				einfo $(basename "${script}")
+				eoutdent
+				${script} "${1}"
+			fi
+		done
+	fi
 
 	return 0
 
