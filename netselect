@@ -233,9 +233,10 @@ function getCurrentProfile() {
 function selectProfile() {
 
 	einfon "Stopping interfaces: "
-	for i in /etc/init.d/net.{eth,wlan,ath}*; do
+	for i in /etc/init.d/net.*; do
 		[[ -f "${i}" ]] || continue
 		interface=${i/*net./}
+		[[ "${interface}" == "lo" ]] && continue
 		echo -n "${interface} "
 		${i} stop &> /dev/null
 	done
