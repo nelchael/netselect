@@ -17,7 +17,7 @@
 # config_... in net.profile (only one interface configured).
 #
 
-VERSION=1.2.5
+VERSION=1.2.6
 
 source /sbin/functions.sh
 
