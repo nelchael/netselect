@@ -17,9 +17,9 @@
 # config_... in net.profile (only one interface configured).
 #
 
-VERSION=1.2.6
+VERSION=1.2.7
 
-source /sbin/functions.sh
+source /etc/init.d/functions.sh
 
 DO_AUTOSTART=yes
 SILENT=no
