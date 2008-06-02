@@ -242,7 +242,7 @@ function selectProfile() {
 	done
 	echo
 
-	if [[ "$(getConfigParam killPump)" == "yes" ]]; then
+	if [[ "$(getConfigParam kill_pump)" == "yes" ]]; then
 		ebegin "Killing pump"
 		killall pump &> /dev/null
 		eend 0
