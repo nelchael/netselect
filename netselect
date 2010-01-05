@@ -242,12 +242,6 @@ function selectProfile() {
 	done
 	echo
 
-	if [[ "$(getConfigParam kill_pump)" == "yes" ]]; then
-		ebegin "Killing pump"
-		killall pump &> /dev/null
-		eend 0
-	fi
-
 	if [[ "$(getConfigParam reloadModule)" == "yes" ]]; then
 		ebegin "Unloading $(getConfigParam assert_module)"
 		rmmod "$(getConfigParam assert_module)"
