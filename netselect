@@ -16,7 +16,7 @@
 # If you want to allow netselect to auto-start interface you must have only one
 # config_... in net.profile (only one interface configured).
 
-VERSION=1.3.0
+VERSION=1.4.0
 
 source /etc/init.d/functions.sh
 
