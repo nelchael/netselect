@@ -359,7 +359,7 @@ function doGUI() {
 		kbuildsycoca --nocheckfiles &> /dev/null
 		local resp=$(
 			kdialog \
-				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--icon /usr/share/icons/oxygen/16x16/devices/network-wired.png \
 				--geometry 200x400 \
 				--title 'netselect' \
 				--radiolist 'Select profile:' \
@@ -370,7 +370,7 @@ function doGUI() {
 
 		if [[ "${resp}" == "auto" ]]; then
 			kdialog \
-				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+				--icon /usr/share/icons/oxygen/16x16/devices/network-wired.png \
 				--msgbox "Please wait, scanning for known networks ..." &> /dev/null &
 			pid=$!
 
@@ -386,7 +386,7 @@ function doGUI() {
 		fi
 
 		kdialog \
-			--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
+			--icon /usr/share/icons/oxygen/16x16/devices/network-wired.png \
 			--msgbox "Please wait, switching to ${resp} ..." &> /dev/null &
 		pid=$!
 
