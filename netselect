@@ -15,7 +15,6 @@
 #
 # If you want to allow netselect to auto-start interface you must have only one
 # config_... in net.profile (only one interface configured).
-#
 
 VERSION=1.3.0
 
@@ -30,7 +29,6 @@ function has() {
 }
 
 function getConfigParam() {
-
 	[[ -z "${1}" ]] && {
 		eerror "Missing first parameter for getConfigParam()"
 		exit 1
@@ -39,7 +37,6 @@ function getConfigParam() {
 	source /etc/netselect/netselect.conf
 
 	[[ -n "${!1}" ]] && echo "${!1}"
-
 }
 
 function seinfo() {
@@ -59,7 +56,6 @@ function seinfon() {
 }
 
 function scanForWiFiNetworks() {
-
 	[[ -f /etc/netselect/netselect.conf ]] || {
 		eerror "File /etc/netselect/netselect.conf does not exist."
 		exit 1
@@ -73,16 +69,12 @@ function scanForWiFiNetworks() {
 	}
 
 	if [[ -n "${assert_module}" ]]; then
-
 		if [[ -z "$(lsmod 2>&1 | grep ${assert_module})" ]]; then
-
 			modprobe ${assert_module} || {
 				eerror "Failed to load module ${assert_module}"
 				exit 1
 			}
-
 		fi
-
 	fi
 
 	[[ "${SILENT}" == "no" ]] && einfo "Available WiFi networks:"
@@ -111,11 +103,9 @@ function scanForWiFiNetworks() {
 		done
 	done
 	eoutdent
-
 }
 
 function autoSwitch() {
-
 	aNetwork=$(netselect --silent --scan)
 	[[ -z "${aNetwork}" ]] && {
 		eerror "No networks available."
@@ -125,11 +115,9 @@ function autoSwitch() {
 	netselect --set ${aNetwork} || return 1
 
 	return 0
-
 }
 
 function listProfiles() {
-
 	[[ "${SILENT}" == "no" ]] && seinfo "Available profiles:"
 	current="$(readlink -f /etc/conf.d/net | sed -e 's,/etc/conf.d/net.profile.,,')"
 	eindent
@@ -142,20 +130,16 @@ function listProfiles() {
 		fi
 	done
 	eoutdent
-
 }
 
 function showActive() {
-
 	[[ "${SILENT}" == "no" ]] && seinfo "Active profile:"
 	eindent
 	seinfo "$(getCurrentProfile)"
 	eoutdent
-
 }
 
 function checkSetup() {
-
 	einfo "Checking setup ..."
 	eindent
 
@@ -180,13 +164,10 @@ function checkSetup() {
 	fi
 
 	eoutdent
-
 	return 0
-
 }
 
 function showHelp() {
-
 	echo -e "\nnetselect: manage multiple network configurations - \e[01;32mGentoo\e[0;0m style"
 	echo "Version: ${VERSION}"
 	cat <<EOF
@@ -221,17 +202,13 @@ Have fun :)
 Krzysiek 'Nelchael' Pawlik - nelchael@gentoo.org
 
 EOF
-
 }
 
 function getCurrentProfile() {
-
 	echo "$(readlink -f /etc/conf.d/net | sed -e 's,/etc/conf.d/net.profile.,,')"
-
 }
 
 function selectProfile() {
-
 	einfon "Stopping interfaces: "
 	for i in /etc/init.d/net.*; do
 		[[ -f "${i}" ]] || continue
@@ -313,11 +290,9 @@ function selectProfile() {
 	fi
 
 	return 0
-
 }
 
 function autostartInterface() {
-
 	[[ "${DO_AUTOSTART}" = "no" ]] && exit 0
 
 	configs="$(cat /etc/conf.d/net | egrep ^config_ | sed -e 's/^config_\(.*\)=.*$/\1/')"
@@ -339,31 +314,24 @@ function autostartInterface() {
 	fi
 
 	return 0
-
 }
 
 function showState() {
-
 	for i in /etc/init.d/net.*; do
 		einfo "Status for ${i/\/etc\/init.d\/net./}:\t$(${i} status | sed -e 's/ \+/ /g' | cut -d ' ' -f 4)"
 	done
-
 }
 
 function checkSilent() {
-
 	[[ "${SILENT}" == "yes" ]] && {
 		ewarn
 		ewarn "--silent is not supported by current action"
 		ewarn
 	}
-
 }
 
 function doGUI() {
-
 	(
-
 		local options=
 		for i in $(netselect --silent --list); do
 			options="${options} ${i} ${i} off "
@@ -383,7 +351,6 @@ function doGUI() {
 		[[ -z "${resp}" ]] && exit 0
 
 		if [[ "${resp}" == "auto" ]]; then
-
 			kdialog \
 				--miniicon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
 				--icon /usr/kde/*/share/icons/default.kde/16x16/filesystems/network.png \
@@ -399,7 +366,6 @@ function doGUI() {
 
 			resp=${network}
 			kill ${pid} &> /dev/null
-
 		fi
 
 		kdialog \
@@ -424,9 +390,7 @@ function doGUI() {
 		done
 
 		kill ${pid} &> /dev/null
-
 	) &> /dev/null
-
 }
 
 while /bin/true; do
