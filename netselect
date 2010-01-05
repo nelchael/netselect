@@ -24,6 +24,11 @@ DO_AUTOSTART=yes
 SILENT=no
 self=$0
 
+[[ -f /etc/netselect/netselect.conf ]] || {
+	eerror "Missing /etc/netselect/netselect.conf file"
+	exit 1
+}
+
 function has() {
 	[[ " ${*:2} " == *" $1 "* ]]
 }
