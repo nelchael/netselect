@@ -254,6 +254,20 @@ function selectProfile() {
 		eend 0
 	}
 
+	[[ -n "$(readlink /etc/resolv.conf.head 2>&1 | grep .profile.)" ]] && rm -f "/etc/resolv.conf.head"
+	[[ -f "/etc/resolv.conf.head.profile.${1}" ]] && {
+		ebegin "resolv.conf.head"
+		ln -s "/etc/resolv.conf.head.profile.${1}" "/etc/resolv.conf.head"
+		eend 0
+	}
+
+	[[ -n "$(readlink /etc/resolv.conf.tail 2>&1 | grep .profile.)" ]] && rm -f "/etc/resolv.conf.tail"
+	[[ -f "/etc/resolv.conf.tail.profile.${1}" ]] && {
+		ebegin "resolv.conf.tail"
+		ln -s "/etc/resolv.conf.tail.profile.${1}" "/etc/resolv.conf.tail"
+		eend 0
+	}
+
 	eoutdent
 
 	configs="$(cat /etc/conf.d/net | egrep ^config_ | sed -e 's/^config_\(.*\)=.*$/\1/')"
