@@ -1,11 +1,11 @@
 # Author: Krzysiek Pawlik <nelchael@gentoo.org>
+# vim: set ft=sh
 #
 # Completion for netselect
 
 _netselect() {
-
-	local cur=${COMP_WORDS[COMP_CWORD]}
-	local prev=${COMP_WORDS[COMP_CWORD-1]}
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+	local prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	local OPTIONS="--script --silent --no-autostart"
 	local ACTIONS="--help --list --set --reselect --state --active --gui --scan --auto"
@@ -28,9 +28,6 @@ _netselect() {
 			COMPREPLY=( $( compgen -W "${OPTIONS} ${ACTIONS} ${ACTIONS_SHORT}" -- ${cur} ) )
 		;;
 	esac
-
-	return 0
-
 }
 
 complete -F _netselect netselect
